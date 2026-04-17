@@ -49,7 +49,9 @@ client's skills directory — one command, no prior install:
 npx @cave-man/realtime-register-skills install
 ```
 
-The installer auto-detects these targets (first match wins, non-interactive):
+The installer auto-detects these targets. When multiple matches exist and
+stdin is a TTY, you'll be prompted to choose one; non-interactive callers
+(CI, `--yes`, piped input) get the first match:
 
 | Client                | Path                                                        |
 | --------------------- | ----------------------------------------------------------- |
@@ -85,7 +87,7 @@ rtr --help
 ### Describe an operation
 
 ```bash
-rtr describe registerDomain
+rtr describe createDomain
 ```
 
 ### Validate a request body before sending
@@ -100,7 +102,7 @@ cat > /tmp/register.json <<'JSON'
 }
 JSON
 
-rtr validate registerDomain --body /tmp/register.json
+rtr validate createDomain --body /tmp/register.json
 # → exits 0 if the body matches the schema, 1 otherwise
 ```
 
@@ -108,7 +110,7 @@ rtr validate registerDomain --body /tmp/register.json
 
 ```bash
 rtr doctor
-# OK  200 registerDomain    https://dm.realtimeregister.com/docs/api/domains/create
+# OK  200 createDomain      https://dm.realtimeregister.com/docs/api/domains/create
 # OK  200 getDomain         https://dm.realtimeregister.com/docs/api/domains/get
 # … 109 lines total, non-200s exit non-zero.
 ```

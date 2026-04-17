@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance
+
+jobs:
+  publish:
+    name: Publish to npm with provenance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify tag matches package.json version
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "tag=$TAG_VERSION  pkg=$PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Test
+        run: npm test
+
+      - name: Audit spec fidelity
+        run: npm run audit
+
+      - name: Check NPM_TOKEN secret presence
+        id: npm_token
+        env:
+          HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+        run: echo "present=$HAS_NPM_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Publish
+        if: steps.npm_token.outputs.present == 'true'
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Skip publish (NPM_TOKEN not configured)
+        if: steps.npm_token.outputs.present != 'true'
+        run: |
+          echo "::warning::NPM_TOKEN secret is not configured; skipping npm publish."
+          echo "Add a secret named NPM_TOKEN at:"
+          echo "  ${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions"

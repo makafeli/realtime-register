@@ -1,6 +1,6 @@
 # Handover — `realtime-register`
 
-Last updated: **2026-04-17** · Savepoint: **v0.2.1** · Repo:
+Last updated: **2026-04-17** · Savepoint: **v0.2.2** · Repo:
 <https://github.com/makafeli/realtime-register> · npm:
 <https://www.npmjs.com/package/@cave-man/realtime-register-skills>
 
@@ -534,10 +534,10 @@ pick up, in roughly descending priority.
 | ---------------- | -------------------------------------------------------- |
 | Repo             | <https://github.com/makafeli/realtime-register>          |
 | Default branch   | `main`                                                   |
-| Current HEAD     | see `git log -1 --oneline` (v0.2.1 savepoint)            |
+| Current HEAD     | see `git log -1 --oneline` (v0.2.2 savepoint)            |
 | Licence          | MIT                                                      |
 | Package name     | `@cave-man/realtime-register-skills`                     |
-| Package version  | `0.2.1` (published to npm — v0.2.0 also on registry)     |
+| Package version  | `0.2.2` (published to npm; 0.2.0/0.2.1 also on registry) |
 | Runtime          | Node.js 20.11+                                           |
 | Author           | Yasin Boelhouwer <yasin@enginebit.com>                   |
 | Upstream docs    | <https://dm.realtimeregister.com/docs/api>               |

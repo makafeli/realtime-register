@@ -8,6 +8,7 @@ import { Command } from "commander";
 import { installCommand } from "./commands/install.js";
 import { uninstallCommand, whereCommand } from "./commands/uninstall.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { PACKAGE_VERSION } from "../lib/package-version.js";
 
 // Pass-through: `skills rtr <anything>` delegates to the main rtr CLI without
 // involving commander at this layer (commander's subcommand handling is not
@@ -26,7 +27,7 @@ async function runInstaller(): Promise<void> {
   program
     .name("skills")
     .description("Installer for the @cave-man/realtime-register-skills agent skill.")
-    .version("0.2.1");
+    .version(PACKAGE_VERSION);
 
   program
     .command("install")

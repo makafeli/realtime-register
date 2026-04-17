@@ -6,6 +6,7 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { select } from "@inquirer/prompts";
 import {
   candidateTargets,
   customTarget,
@@ -27,7 +28,7 @@ export interface InstallOptions {
 const PACKAGE_NAME = "@cave-man/realtime-register-skills";
 
 export async function installCommand(opts: InstallOptions): Promise<void> {
-  const target = resolveTarget(opts);
+  const target = await resolveTarget(opts);
   const destSkill = target.path;
 
   if (opts.dryRun) {
@@ -82,7 +83,7 @@ export async function installCommand(opts: InstallOptions): Promise<void> {
 }
 
 /** Decide which SkillTarget to install into. */
-function resolveTarget(opts: InstallOptions): SkillTarget {
+async function resolveTarget(opts: InstallOptions): Promise<SkillTarget> {
   if (opts.target) return customTarget(opts.target);
 
   const envTarget = process.env.REALTIME_REGISTER_SKILL_DIR;
@@ -91,25 +92,23 @@ function resolveTarget(opts: InstallOptions): SkillTarget {
   const candidates = candidateTargets();
 
   // Non-interactive (CI, piped input, --yes): pick the default.
-  if (opts.yes || !process.stdin.isTTY) {
+  if (opts.yes || !process.stdin.isTTY || !process.stdout.isTTY) {
     return defaultTarget(candidates);
   }
 
   const existing = candidates.filter((c) => c.exists);
   if (existing.length <= 1) return defaultTarget(candidates);
 
-  // Multiple options; print them and let the user re-invoke with --target
-  // rather than implement a full interactive prompt (keeps the dependency
-  // graph small and the command script idempotent).
-  console.log("Multiple skill targets detected. Choose one with --target <dir>:");
-  for (const t of existing) {
-    console.log(`  [${t.id}]  ${t.label}`);
-    console.log(`           ${t.dir}`);
-  }
-  console.log("");
-  console.log("Re-run e.g.:");
-  console.log(`  npx ${PACKAGE_NAME} install --target "${existing[0]!.dir}"`);
-  process.exit(0);
+  // TTY + multiple existing targets: prompt the user.
+  const chosenDir = await select<string>({
+    message: "Multiple skill targets detected. Where should the skill be installed?",
+    choices: existing.map((t) => ({
+      name: `${t.label.padEnd(30)} ${t.dir}`,
+      value: t.dir,
+      description: t.id,
+    })),
+  });
+  return customTarget(chosenDir);
 }
 
 /** Recursively count the files under `dir` so we can report a useful total. */

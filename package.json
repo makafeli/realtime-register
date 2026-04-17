@@ -1,9 +1,10 @@
 {
   "name": "@cave-man/realtime-register-skills",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Installable Realtime Register REST API v2 agent skill and CLI. Ships SKILL.md, 109 operation references, and the rtr validation/doc CLI. Install with `npx @cave-man/realtime-register-skills install`.",
   "type": "module",
   "bin": {
+    "realtime-register-skills": "./bin/skills.js",
     "skills": "./bin/skills.js",
     "rtr": "./bin/rtr.js"
   },
@@ -28,6 +29,8 @@
     "doctor": "node bin/rtr.js doctor",
     "generate": "node bin/rtr.js generate",
     "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
   "engines": {
@@ -60,6 +63,7 @@
     "url": "https://github.com/makafeli/realtime-register/issues"
   },
   "dependencies": {
+    "@inquirer/prompts": "^7.10.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "cheerio": "^1.0.0",
@@ -68,6 +72,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
   }
 }

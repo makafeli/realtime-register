@@ -6,6 +6,47 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-04-17
+
+### Fixed
+
+- **`npx @cave-man/realtime-register-skills <subcommand>` now works.** Added
+  `realtime-register-skills` as a third bin entry (alias of `skills`) so npx
+  resolves a matching binary when invoked with the bare scoped package
+  name. Previously npx errored with "could not determine executable to run"
+  because no bin matched the unscoped name.
+
+### Changed
+
+- **CLI versions are sourced from `package.json`** via `createRequire`.
+  `rtr --version` and `skills --version` now always report the published
+  version; future bumps only need a single edit in `package.json`.
+- **Interactive target picker.** When `skills install` is run from a TTY,
+  no `--target` is supplied, and multiple candidate targets exist, the
+  installer now prompts via `@inquirer/prompts` instead of printing
+  instructions and exiting. Non-TTY / `--yes` / piped input is unchanged.
+
+### Added
+
+- **Vitest test suite** (22 tests, 3 files):
+  - `tests/skill-paths.test.ts` — target detection + payload helpers.
+  - `tests/spec.test.ts` — YAML loader (happy/unhappy) + real spec sanity.
+  - `tests/install.test.ts` — end-to-end install/uninstall round-trip.
+- **GitHub Actions CI** (`.github/workflows/ci.yml`) — runs `build`, `lint`,
+  `audit`, and `test` on Node 20 & 22 for every push and PR; `doctor`
+  runs only on `main` pushes to avoid hammering upstream.
+- **Release workflow** (`.github/workflows/release.yml`) — triggered by a
+  `v*.*.*` tag; verifies the tag matches `package.json`, then runs
+  `npm publish --access public --provenance` so the published package
+  carries cryptographic provenance attestations.
+- **Weekly drift detection** (`.github/workflows/drift.yml` +
+  `scripts/diff-live.mjs`) — every Monday 03:17 UTC it runs `rtr doctor`
+  and scrapes every operation, diffing `path` / `method` / required-field
+  count against the shipped spec. Any mismatch opens (or comments on) an
+  issue labelled `fidelity-drift`.
+- **New module** `src/lib/package-version.ts` — single source of truth for
+  the CLI-reported version.
+
 ## [0.2.1] — 2026-04-17
 
 ### Changed
@@ -103,7 +144,8 @@ First public release.
 | `providers`     | 7   | Providers + gateway-only registry accounts          |
 | `misc`          | 5   | IsProxy + 4 ADAC WebSocket actions                  |
 
-[Unreleased]: https://github.com/makafeli/realtime-register/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/makafeli/realtime-register/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/makafeli/realtime-register/releases/tag/v0.2.2
 [0.2.1]: https://github.com/makafeli/realtime-register/releases/tag/v0.2.1
 [0.2.0]: https://github.com/makafeli/realtime-register/releases/tag/v0.2.0
 [0.1.0]: https://github.com/makafeli/realtime-register/releases/tag/v0.1.0

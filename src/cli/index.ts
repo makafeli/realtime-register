@@ -6,13 +6,14 @@ import { validateCommand } from "./commands/validate.js";
 import { generateCommand } from "./commands/generate.js";
 import { scrapeCommand } from "./commands/scrape.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { PACKAGE_VERSION } from "../lib/package-version.js";
 
 const program = new Command();
 
 program
   .name("rtr")
   .description("Realtime Register REST API skill and CLI.")
-  .version("0.2.1");
+  .version(PACKAGE_VERSION);
 
 program
   .command("list")
