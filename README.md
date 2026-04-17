@@ -1,6 +1,6 @@
-# realtime-register
+# @makafeli/realtime-register-skills
 
-[![npm](https://img.shields.io/badge/npm-realtime--register-cb3837?logo=npm)](https://www.npmjs.com/package/realtime-register)
+[![npm](https://img.shields.io/badge/npm-%40makafeli%2Frealtime--register--skills-cb3837?logo=npm)](https://www.npmjs.com/package/@makafeli/realtime-register-skills)
 [![licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A520.11-44883e?logo=node.js&logoColor=white)](https://nodejs.org)
 [![operations](https://img.shields.io/badge/operations-109%2F109%20verified-2ea44f)](docs/fidelity.md)
@@ -40,15 +40,46 @@ One package, two audiences:
 
 ## Quick start
 
+### Install as an agent skill
+
+Drop the skill (`SKILL.md` + `references/` + `assets/spec/`) into your agent
+client's skills directory — one command, no prior install:
+
 ```bash
-npm install -g realtime-register
-rtr --help
+npx @makafeli/realtime-register-skills install
 ```
 
-Or run without installing:
+The installer auto-detects these targets (first match wins, non-interactive):
+
+| Client                | Path                                                        |
+| --------------------- | ----------------------------------------------------------- |
+| Claude Desktop (macOS)  | `~/Library/Application Support/Claude/skills/`              |
+| Claude Desktop (Windows) | `%APPDATA%\Claude\skills\`                                  |
+| Claude Desktop (Linux)  | `~/.config/Claude/skills/`                                  |
+| Claude Code CLI         | `~/.claude/skills/`                                         |
+| Augment                 | `~/.augment/skills/`                                        |
+| Local project fallback  | `./skills/`                                                 |
+
+Override with `--target <dir>` or the `REALTIME_REGISTER_SKILL_DIR` env var.
+Installer subcommands:
 
 ```bash
-npx realtime-register list --category domains
+npx @makafeli/realtime-register-skills install --dry-run           # preview
+npx @makafeli/realtime-register-skills install --target ./skills   # explicit dir
+npx @makafeli/realtime-register-skills install --global            # + npm i -g (rtr on PATH)
+npx @makafeli/realtime-register-skills where                       # list detected targets
+npx @makafeli/realtime-register-skills uninstall                   # remove the skill
+```
+
+### Install the `rtr` CLI
+
+```bash
+# one-off (recommended)
+npx @makafeli/realtime-register-skills rtr --help
+
+# or globally
+npm install -g @makafeli/realtime-register-skills
+rtr --help
 ```
 
 ### Describe an operation
@@ -85,6 +116,20 @@ rtr doctor
 ---
 
 ## CLI at a glance
+
+Two binaries ship in this package:
+
+**`skills`** — the installer entry point (`npx @makafeli/realtime-register-skills …`).
+
+| Command                                      | Purpose                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------- |
+| `skills install [--target <dir>] [--global]` | Install the skill into a detected or explicit target; optionally `npm i -g`.    |
+| `skills uninstall [--target <dir>] [--all]`  | Remove the skill from one or all installed targets.                             |
+| `skills where`                               | Print every known target and its install state.                                 |
+| `skills doctor`                              | `rtr doctor` against the packaged spec.                                         |
+| `skills rtr <subcommand> [...]`              | Pass-through to the `rtr` CLI below without a separate install.                 |
+
+**`rtr`** — the operation / schema CLI.
 
 | Command                                         | Purpose                                                                          |
 | ----------------------------------------------- | -------------------------------------------------------------------------------- |

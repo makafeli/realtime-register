@@ -6,6 +6,43 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-17
+
+### Changed
+
+- **Renamed package to `@makafeli/realtime-register-skills`.** The previous
+  unscoped `realtime-register` name is retired before any npm publish. The
+  scoped name avoids trademark confusion with Realtime Register B.V. and
+  enables the agent-skill installer UX.
+- `rtr --version` now reports `0.2.0`.
+
+### Added
+
+- **`skills` bin** — new installer entry point invokable via
+  `npx @makafeli/realtime-register-skills <subcommand>` without a prior
+  install. Subcommands: `install`, `uninstall`, `where`, `doctor`, and a
+  pass-through `rtr` forwarder.
+- **Autodetecting installer** covering Claude Desktop (macOS/Windows/Linux),
+  Claude Code CLI (`~/.claude/skills`), Augment (`~/.augment/skills`), and a
+  local-project fallback (`./skills/`). Overridable with `--target <dir>`
+  or `$REALTIME_REGISTER_SKILL_DIR`.
+- **`--global` flag** on `install` that additionally runs
+  `npm install -g @makafeli/realtime-register-skills` to put the `rtr`
+  binary on PATH.
+- **`--dry-run`, `--force`, `--yes` flags** on `install`; `--target`, `--all`,
+  `--dry-run` on `uninstall`.
+- `src/lib/skill-paths.ts` — pure, read-only target-detection helpers.
+- `src/cli/commands/install.ts`, `src/cli/commands/uninstall.ts` —
+  installer implementation (~230 LoC combined).
+- `src/cli/install-entry.ts` + `bin/skills.js` — CLI wiring and bin shim.
+
+### Package
+
+- `bin` entries: `skills` → `bin/skills.js` and `rtr` → `bin/rtr.js`.
+- `files` extended to ship `scripts/` and `HANDOVER.md`.
+- `publishConfig.access = "public"` so the scoped package publishes as
+  public by default.
+
 ## [0.1.0] — 2026-04-17
 
 First public release.
@@ -56,5 +93,6 @@ First public release.
 | `providers`     | 7   | Providers + gateway-only registry accounts          |
 | `misc`          | 5   | IsProxy + 4 ADAC WebSocket actions                  |
 
-[Unreleased]: https://github.com/makafeli/realtime-register/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/makafeli/realtime-register/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/makafeli/realtime-register/releases/tag/v0.2.0
 [0.1.0]: https://github.com/makafeli/realtime-register/releases/tag/v0.1.0

@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name("rtr")
   .description("Realtime Register REST API skill and CLI.")
-  .version("0.0.1");
+  .version("0.2.0");
 
 program
   .command("list")

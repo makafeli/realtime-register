@@ -1,9 +1,10 @@
 {
-  "name": "realtime-register",
-  "version": "0.1.0",
-  "description": "Realtime Register REST API skill and CLI. Machine-readable spec, schema-validated payloads, and scraped documentation for every non-SiteLock endpoint.",
+  "name": "@makafeli/realtime-register-skills",
+  "version": "0.2.0",
+  "description": "Installable Realtime Register REST API v2 agent skill and CLI. Ships SKILL.md, 109 operation references, and the rtr validation/doc CLI. Install with `npx @makafeli/realtime-register-skills install`.",
   "type": "module",
   "bin": {
+    "skills": "./bin/skills.js",
     "rtr": "./bin/rtr.js"
   },
   "files": [
@@ -12,8 +13,10 @@
     "assets/spec",
     "references",
     "docs",
+    "scripts",
     "SKILL.md",
     "README.md",
+    "HANDOVER.md",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "LICENSE"
@@ -36,11 +39,16 @@
     "rest-api",
     "cli",
     "agent-skill",
+    "claude-skill",
+    "augment-skill",
     "dns",
     "ssl",
     "epp",
     "registrar"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Yasin Boelhouwer <yasin@enginebit.com>",
   "license": "MIT",
   "homepage": "https://github.com/makafeli/realtime-register#readme",

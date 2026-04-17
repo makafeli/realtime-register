@@ -1,6 +1,6 @@
 # Handover — `realtime-register`
 
-Last updated: **2026-04-17** · Savepoint: **v0.1.0** · Repo:
+Last updated: **2026-04-17** · Savepoint: **v0.2.0** · Repo:
 <https://github.com/makafeli/realtime-register>
 
 This document is the canonical technical memory for the project. It is written
@@ -148,15 +148,18 @@ realtime-register/
 ├── LICENSE                   # MIT
 ├── package.json              # Node 20.11+, "type": "module", bin=rtr
 ├── tsconfig.json             # emits into dist/
-├── bin/rtr.js                # shim: resolves dist/ in prod, src/ in dev
+├── bin/rtr.js                # rtr shim: resolves dist/ in prod, src/ in dev
+├── bin/skills.js             # skills shim (installer entry point)
 ├── src/
 │   ├── cli/
-│   │   ├── index.ts          # commander wiring
-│   │   └── commands/{list,describe,validate,generate,scrape,doctor}.ts
+│   │   ├── index.ts          # rtr commander wiring
+│   │   ├── install-entry.ts  # skills commander wiring + rtr pass-through
+│   │   └── commands/{list,describe,validate,generate,scrape,doctor,install,uninstall}.ts
 │   └── lib/
 │       ├── spec.ts           # YAML loader + Spec model
 │       ├── schema.ts         # YAML → JSON Schema (ajv-compatible)
 │       ├── scraper.ts        # HTML fetch + cheerio parse
+│       ├── skill-paths.ts    # installer target detection (Claude/Augment/local)
 │       └── types.ts          # TS types for Spec / Operation
 ├── assets/spec/              # source of truth (§2)
 ├── references/               # generated per-category MD (do not hand-edit)
@@ -435,58 +438,78 @@ work, but retained for archaeology if a future bulk re-seed is needed.
 
 ## 6. Future roadmap
 
-The v0.1.0 savepoint is feature-complete for the "fidelity promotion" goal.
-What follows is the backlog the next developer should pick up, in roughly
-descending priority.
+The v0.2.0 savepoint adds the installable-skill surface on top of the
+v0.1.0 fidelity work. What follows is the backlog the next developer should
+pick up, in roughly descending priority.
 
-### Short term (pre-v0.2.0)
+### Completed since the initial handover
 
-1. **GitHub Actions CI.** Add `.github/workflows/ci.yml` running on push and
-   PR:
+- ✅ **Package renamed** to `@makafeli/realtime-register-skills` (scoped,
+  publishable). Version bumped to `0.2.0`.
+- ✅ **Installer implemented** (`skills` bin, `install` / `uninstall` /
+  `where` / `doctor` / `rtr` pass-through). Autodetects Claude Desktop
+  (macOS/Windows/Linux), Claude Code CLI, Augment, and project-local
+  targets; overridable via `--target` or `$REALTIME_REGISTER_SKILL_DIR`.
+- ✅ **`--global` flag** triggers `npm install -g` to put `rtr` on PATH.
+- ✅ **Package files list** extended to ship scripts and HANDOVER alongside
+  the existing spec/references/docs/SKILL bundle.
+
+### Short term (pre-v0.3.0)
+
+1. **GitHub Actions CI.** Add `.github/workflows/ci.yml` running on push
+   and PR:
    - `npm ci`
    - `npm run build`
    - `npm run lint`
    - `npm run audit`
    - `npm run doctor` (gated to main/tags to avoid hammering upstream)
    - Matrix over Node 20 / 22.
-2. **Tag + GitHub Release for v0.1.0.**
+2. **Tag + GitHub Release for v0.2.0.**
    ```bash
-   git tag -a v0.1.0 -m "v0.1.0 — 100% verified: docs"
-   git push origin v0.1.0
-   gh release create v0.1.0 -F CHANGELOG.md
+   git tag -a v0.2.0 -m "v0.2.0 — installable skill + scoped package"
+   git push origin v0.2.0
+   gh release create v0.2.0 -F CHANGELOG.md
    ```
-3. **Publish to npm.** `npm publish --access public` against the
-   `realtime-register` package name. Requires an npm login; the
-   `prepublishOnly` script will rebuild `dist/` automatically.
+3. **Publish to npm.** Requires the `@makafeli` org (personal scope is free
+   on npm).
+   ```bash
+   npm login
+   npm publish  # access=public via publishConfig
+   ```
+   `prepublishOnly` rebuilds `dist/` automatically.
+4. **`install` interactive prompt.** Current multi-target behaviour prints
+   choices and exits; wire in `@inquirer/prompts` for a real chooser when
+   `isTTY && !--yes`.
+5. **Installer tests.** `vitest` seed covering `skill-paths.ts` detection,
+   `install --dry-run` output, and a full `install --target /tmp/...` →
+   `uninstall --target /tmp/...` round-trip.
 
-### Medium term (v0.2.0)
+### Medium term (v0.3.0)
 
-4. **Automated drift detection.** Scheduled (weekly) GitHub Actions job
-   that:
+6. **Automated drift detection.** Scheduled (weekly) GitHub Actions job:
    - Runs `rtr scrape` across all 109 operations.
    - Diffs the skeleton against the YAML via a to-be-written
      `scripts/diff-live.mjs`.
    - Opens an issue with label `fidelity-drift` listing any differences.
-5. **Unit tests.** No test suite exists yet. Seed with:
+7. **Unit tests for the core.** Seed with:
    - `src/lib/spec.ts` loader tests (malformed YAML, missing fields).
    - `src/lib/schema.ts` — snapshot test that
      `buildSchema(spec, "registerDomain")` matches a fixture.
    - CLI smoke tests via `execa` calling `bin/rtr.js` in a temp dir.
-   - Suggested: `vitest` with `--coverage`.
-6. **`rtr diff` subcommand.** Wrap `scrape` + structured diff into a first-
-   class command so `sdk` → `docs` promotion becomes one step.
-7. **Response-body schemas.** Currently `responses` only carries a
-   `description`. Add an optional `fields` list and wire into `rtr validate
-   --response`.
+8. **`rtr diff` subcommand.** Wrap `scrape` + structured diff into a
+   first-class command so `sdk` → `docs` promotion becomes one step.
+9. **Response-body schemas.** Currently `responses` only carries a
+   `description`. Add an optional `fields` list and wire into
+   `rtr validate --response`.
 
 ### Long term (v1.0.0)
 
-8. **OpenAPI export.** `rtr export --format openapi3` emitting a single
-   `openapi.json` covering all 109 ops. Enables third-party codegen
-   (Prisma, Kiota, openapi-typescript-codegen).
-9. **Language-agnostic skill bundle.** Publish an MCP-compatible server so
-   non-Node agents can call `list`/`describe`/`validate` over stdio.
-10. **SiteLock integration** (scope change). Would require onboarding the
+10. **OpenAPI export.** `rtr export --format openapi3` emitting a single
+    `openapi.json` covering all 109 ops. Enables third-party codegen
+    (Prisma, Kiota, openapi-typescript-codegen).
+11. **Language-agnostic skill bundle.** Publish an MCP-compatible server so
+    non-Node agents can call `list`/`describe`/`validate` over stdio.
+12. **SiteLock integration** (scope change). Would require onboarding the
     separate SiteLock API contract; currently out of scope, tracked as a
     standing non-goal.
 
@@ -510,10 +533,10 @@ descending priority.
 | ---------------- | -------------------------------------------------------- |
 | Repo             | <https://github.com/makafeli/realtime-register>          |
 | Default branch   | `main`                                                   |
-| Current HEAD     | `d23771d` — *Initial release: realtime-register v0.1.0* |
+| Current HEAD     | see `git log -1 --oneline` (v0.2.0 savepoint)            |
 | Licence          | MIT                                                      |
-| Package name     | `realtime-register`                                      |
-| Package version  | `0.1.0` (unpublished to npm as of handover)              |
+| Package name     | `@makafeli/realtime-register-skills`                     |
+| Package version  | `0.2.0` (unpublished to npm as of handover)              |
 | Runtime          | Node.js 20.11+                                           |
 | Author           | Yasin Boelhouwer <yasin@enginebit.com>                   |
 | Upstream docs    | <https://dm.realtimeregister.com/docs/api>               |
