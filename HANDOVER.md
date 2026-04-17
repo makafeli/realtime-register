@@ -161,10 +161,23 @@ realtime-register/
 │       ├── schema.ts         # YAML → JSON Schema (ajv-compatible)
 │       ├── scraper.ts        # HTML fetch + cheerio parse
 │       ├── skill-paths.ts    # installer target detection (Claude/Augment/local)
+│       ├── package-version.ts# single source of truth for rtr/skills --version
 │       └── types.ts          # TS types for Spec / Operation
 ├── assets/spec/              # source of truth (§2)
 ├── references/               # generated per-category MD (do not hand-edit)
 ├── scripts/                  # maintenance utilities (§5)
+│   ├── audit-refs.mjs        # static spec sanity checks (16/109)
+│   ├── extract-fields.mjs    # cheerio scraper over cached HTML
+│   ├── reconcile-sdk.mjs     # legacy SDK ↔ nav reconciler (archaeology)
+│   └── diff-live.mjs         # weekly drift probe (backs drift.yml)
+├── tests/                    # vitest suites (§5.2)
+│   ├── spec.test.ts          # YAML loader + helpers
+│   ├── skill-paths.test.ts   # target detection + payloads
+│   └── install.test.ts       # end-to-end install/uninstall round-trip
+├── .github/workflows/
+│   ├── ci.yml                # build/lint/audit/test on Node 20 & 22
+│   ├── release.yml           # tag-triggered npm publish --provenance
+│   └── drift.yml             # weekly drift job; opens fidelity-drift issue
 ├── docs/                     # long-form docs (agent / CLI / spec / fidelity)
 └── dist/                     # tsc output (gitignored)
 ```
@@ -195,6 +208,7 @@ Available npm scripts:
 | `npm run audit`          | `node scripts/audit-refs.mjs`           |
 | `npm run doctor`         | `node bin/rtr.js doctor`                |
 | `npm run generate`       | `node bin/rtr.js generate`              |
+| `npm test`               | `vitest run` (22 tests across 3 files)  |
 | `npm run prepublishOnly` | `npm run build` (guard for `npm publish`) |
 
 ### 3.2 CLI reference with examples
@@ -208,7 +222,7 @@ access the network (HTTPS to `dm.realtimeregister.com`).
 $ rtr list --category domains
 domains    GET   /v2/domains                          listDomains      docs
 domains    GET   /v2/domains/{domainName}             getDomain        docs
-domains    POST  /v2/domains/{domainName}             registerDomain   docs
+domains    POST  /v2/domains/{domainName}             createDomain     docs
 ...
 ```
 
@@ -217,8 +231,8 @@ Columns: category · method · path · operationId · `verified` marker.
 #### `rtr describe <operationId>`
 
 ```bash
-$ rtr describe registerDomain
-registerDomain  POST /v2/domains/{domainName}   async
+$ rtr describe createDomain
+createDomain  POST /v2/domains/{domainName}   async
   docUrl: https://dm.realtimeregister.com/docs/api/domains/create
   authScope: customer
   path params:
@@ -245,7 +259,7 @@ Authoritative pre-flight reference before writing client code.
 $ cat > /tmp/register.json <<'JSON'
 { "registrant": "H1234567", "period": 12, "ns": ["ns1.example.com"] }
 JSON
-$ rtr validate registerDomain --body /tmp/register.json
+$ rtr validate createDomain --body /tmp/register.json
 OK
 $ echo $?
 0
@@ -274,7 +288,7 @@ Fetch the live HTML doc and print a YAML-shaped skeleton derived from the
 page's `URL fields`, `Request parameters`, and `Request content` tables.
 
 ```bash
-$ rtr scrape registerDomain
+$ rtr scrape createDomain
 # URL fields:
 #   - domainName (string, required)
 # Request parameters: (none)
@@ -382,12 +396,12 @@ land as `sdk` and be promoted before the next minor release.
 
 ---
 
-## 5. Tooling & scripts
+## 5. Tooling, scripts, tests & CI
 
 The `scripts/` directory holds maintenance utilities that are not part of
 the shipped CLI. All are plain `.mjs` and need no TypeScript build.
 
-### `scripts/audit-refs.mjs`
+### 5.1 `scripts/audit-refs.mjs`
 
 Static sanity check of the full spec. Run before every release.
 
@@ -413,7 +427,7 @@ Checks performed:
 
 Exit 0 on clean audit, non-zero on any problem.
 
-### `scripts/extract-fields.mjs`
+### 5.2 `scripts/extract-fields.mjs`
 
 Cheerio-backed scraper. Given a local HTML cache of a docs page, prints its
 `URL fields`, `Request parameters`, and `Request content` tables in a
@@ -429,21 +443,81 @@ $ node scripts/extract-fields.mjs /tmp/brands-create.html
 Prefer `rtr scrape` for one-offs; use this script when you need to diff
 dozens of cached pages without re-hitting the network.
 
-### `scripts/reconcile-sdk.mjs`
+### 5.3 `scripts/reconcile-sdk.mjs`
 
 Legacy helper that cross-referenced the initial SDK-derived spec against
 the live nav to catch mis-slugged `docUrl`s. Not needed for day-to-day
 work, but retained for archaeology if a future bulk re-seed is needed.
 
+### 5.4 `scripts/diff-live.mjs`
+
+Drift probe. Loads every operation from `assets/spec/`, fetches the
+corresponding live docs page, runs it through `src/lib/scraper.ts`, and
+flags any operation whose `path`, `method`, or body required-field count
+has drifted from the shipped spec. Writes a JSON report to stdout and
+exits non-zero on drift.
+
+```bash
+$ node scripts/diff-live.mjs        # expects dist/ to exist (npm run build)
+{ "checked": 109, "drifts": [] }
+```
+
+Description and restriction strings are intentionally **not** diffed —
+they evolve constantly upstream and would generate noise. This script is
+the engine behind `.github/workflows/drift.yml` (§5.6); run it locally
+when investigating a flagged issue.
+
+### 5.5 `tests/` — vitest suite (`npm test`)
+
+Three files, 22 tests. All network-free; the install round-trip uses a
+temp directory under the OS `tmpdir()`.
+
+| File                          | Coverage                                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| `tests/spec.test.ts`          | `loadSpec` happy path + real-spec sanity (16/109); `findOperation` miss + hit             |
+| `tests/skill-paths.test.ts`   | `detectTargets` priority + env override; copy/remove payload helpers                      |
+| `tests/install.test.ts`       | `bin/skills.js --version`; `install --target <tmp>` then `uninstall --target <tmp>` cycle |
+
+Run locally before every commit that touches `src/` or `assets/`:
+
+```bash
+$ npm test
+Test Files  3 passed (3)
+     Tests  22 passed (22)
+```
+
+When adding a command, add a test in the matching file or create a new
+`tests/<feature>.test.ts` — CI gates PRs on this suite.
+
+### 5.6 `.github/workflows/` — CI, release, drift
+
+Three workflows; all authored to fail **closed** (any non-success blocks
+the tag path) but to skip cleanly when the environment is half-configured
+(e.g. `NPM_TOKEN` absent).
+
+| Workflow       | Trigger                              | Purpose                                                                                                     |
+| -------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `ci.yml`       | push / PR on `main`                  | build, lint, audit, test across Node 20 & 22; `doctor` gated to main pushes only to spare upstream docs.    |
+| `release.yml`  | tag push matching `v*.*.*`           | verifies tag matches `package.json`, runs tests + audit, then `npm publish --access public --provenance`.   |
+| `drift.yml`    | schedule (Mon 03:17 UTC) + manual    | runs `rtr doctor` and `scripts/diff-live.mjs`; on drift, opens or comments on a `fidelity-drift` issue.     |
+
+**CI-driven publish is guarded on `NPM_TOKEN`.** If the secret isn't
+configured on the repo, `release.yml` emits a warning step and exits
+green — tags still produce a clean release log but no npm push. Flip the
+secret on to enable provenance-attested publishes without code changes.
+
 ---
 
 ## 6. Future roadmap
 
-The v0.2.0 savepoint adds the installable-skill surface on top of the
-v0.1.0 fidelity work. What follows is the backlog the next developer should
-pick up, in roughly descending priority.
+The v0.2.2 savepoint closes out every item the original v0.2.0 backlog
+called out (packaging, CI, provenance, interactive installer, tests,
+drift). What follows is the backlog the next developer should pick up, in
+roughly descending priority.
 
 ### Completed since the initial handover
+
+#### v0.2.0 — installable skill + scoped package
 
 - ✅ **Package renamed** to `@cave-man/realtime-register-skills` (scoped,
   publishable). Version bumped to `0.2.0`.
@@ -455,76 +529,104 @@ pick up, in roughly descending priority.
 - ✅ **Package files list** extended to ship scripts and HANDOVER alongside
   the existing spec/references/docs/SKILL bundle.
 
+#### v0.2.1 — republished under `@cave-man`
+
+- ✅ First publish under the `@cave-man` npm org (0.2.0 was stranded after a
+  scope migration). Functionally identical to 0.2.0, except every source
+  reference to the old scope was updated.
+- ✅ `rtr doctor` / fresh-install smoke tests verified against the live
+  registry tarball.
+
+#### v0.2.2 — npx fix, interactive installer, CI, drift detection
+
+- ✅ **`npx @cave-man/realtime-register-skills <subcommand>` now resolves.**
+  Added `realtime-register-skills` as a third bin alias so npx matches a
+  binary under the bare scoped package name (fixes the "could not
+  determine executable to run" error). Registry now exposes three bins:
+  `rtr`, `skills`, `realtime-register-skills`.
+- ✅ **Single-source-of-truth versioning.** `src/lib/package-version.ts`
+  reads `version` from `package.json` via `createRequire`; `rtr --version`
+  and `skills --version` no longer require source edits on bumps.
+- ✅ **Interactive target picker.** `skills install` uses
+  `@inquirer/prompts` when stdin is a TTY, no `--target` / `--yes` is
+  supplied, and multiple candidate targets exist. Non-TTY / CI / piped
+  input behaviour (first-match-wins) is unchanged.
+- ✅ **Vitest suite** (`tests/`): 22 tests, 3 files, covers `spec.ts`
+  loader, `skill-paths.ts` detection + payload helpers, and a full
+  `install → uninstall` round-trip. `npm test` wired into CI.
+- ✅ **GitHub Actions CI** (`.github/workflows/ci.yml`): `build`, `lint`,
+  `audit`, `test` on Node 20 & 22 for every push and PR; `doctor` gated
+  to main pushes only so PRs don't hammer upstream docs.
+- ✅ **Release workflow** (`.github/workflows/release.yml`): tag-triggered
+  (`v*.*.*`), verifies tag matches `package.json`, runs tests + audit,
+  then `npm publish --access public --provenance` — guarded on
+  `NPM_TOKEN` so it skips cleanly with a warning until the secret is
+  configured on the repo.
+- ✅ **Weekly drift detection** (`drift.yml` + `scripts/diff-live.mjs`):
+  runs every Monday 03:17 UTC, scrapes every operation, diffs `path` /
+  `method` / required-field count against the shipped spec. On mismatch
+  it opens (or comments on) an issue labelled `fidelity-drift`.
+
 ### Short term (pre-v0.3.0)
 
-1. **GitHub Actions CI.** Add `.github/workflows/ci.yml` running on push
-   and PR:
-   - `npm ci`
-   - `npm run build`
-   - `npm run lint`
-   - `npm run audit`
-   - `npm run doctor` (gated to main/tags to avoid hammering upstream)
-   - Matrix over Node 20 / 22.
-2. **Tag + GitHub Release for v0.2.0.**
-   ```bash
-   git tag -a v0.2.0 -m "v0.2.0 — installable skill + scoped package"
-   git push origin v0.2.0
-   gh release create v0.2.0 -F CHANGELOG.md
-   ```
-3. **Publish to npm.** Requires the `@makafeli` org (personal scope is free
-   on npm).
-   ```bash
-   npm login
-   npm publish  # access=public via publishConfig
-   ```
-   `prepublishOnly` rebuilds `dist/` automatically.
-4. **`install` interactive prompt.** Current multi-target behaviour prints
-   choices and exits; wire in `@inquirer/prompts` for a real chooser when
-   `isTTY && !--yes`.
-5. **Installer tests.** `vitest` seed covering `skill-paths.ts` detection,
-   `install --dry-run` output, and a full `install --target /tmp/...` →
-   `uninstall --target /tmp/...` round-trip.
+1. **Flip CI-driven publishing on.** Add a repo secret `NPM_TOKEN` (npm
+   Automation token) at
+   `https://github.com/makafeli/realtime-register/settings/secrets/actions`.
+   The next `v*.*.*` tag will then auto-publish with Sigstore provenance
+   (instead of manual `npm publish`). The guard is already in
+   `release.yml`; no workflow changes needed.
+2. **First hand-fired drift run.** Trigger `drift.yml` via
+   `gh workflow run drift.yml` once to confirm the scrape-and-diff path
+   runs green against the current spec before the weekly cron starts
+   generating issues unbidden.
+3. **`rtr diff` subcommand.** Wrap `scrape` + the structured diff logic
+   already in `scripts/diff-live.mjs` into a first-class CLI command so
+   `sdk` → `docs` promotion becomes one step.
+4. **Response-body schemas.** Currently `responses` only carries a
+   `description`. Add an optional `fields` list and wire into
+   `rtr validate --response`.
+5. **Core schema tests.** Extend the vitest suite with a snapshot test
+   that `buildSchema(spec, "createDomain")` matches a fixture, and add
+   malformed-YAML tests for `src/lib/spec.ts`.
 
 ### Medium term (v0.3.0)
 
-6. **Automated drift detection.** Scheduled (weekly) GitHub Actions job:
-   - Runs `rtr scrape` across all 109 operations.
-   - Diffs the skeleton against the YAML via a to-be-written
-     `scripts/diff-live.mjs`.
-   - Opens an issue with label `fidelity-drift` listing any differences.
-7. **Unit tests for the core.** Seed with:
-   - `src/lib/spec.ts` loader tests (malformed YAML, missing fields).
-   - `src/lib/schema.ts` — snapshot test that
-     `buildSchema(spec, "registerDomain")` matches a fixture.
-   - CLI smoke tests via `execa` calling `bin/rtr.js` in a temp dir.
-8. **`rtr diff` subcommand.** Wrap `scrape` + structured diff into a
-   first-class command so `sdk` → `docs` promotion becomes one step.
-9. **Response-body schemas.** Currently `responses` only carries a
-   `description`. Add an optional `fields` list and wire into
-   `rtr validate --response`.
+6. **OpenAPI export.** `rtr export --format openapi3` emitting a single
+   `openapi.json` covering all 109 ops. Enables third-party codegen
+   (Prisma, Kiota, openapi-typescript-codegen).
+7. **JSON output mode for `rtr describe`.** `--format json` so MCP
+   bridges and other tooling can consume the operation contract without
+   regex-ing the human view.
+8. **Parallel `rtr doctor`.** Small worker pool (concurrency ~4) to drop
+   wall time from ~20 s to ~3 s; keep it behind a `--concurrency` flag
+   to stay polite to upstream.
 
 ### Long term (v1.0.0)
 
-10. **OpenAPI export.** `rtr export --format openapi3` emitting a single
-    `openapi.json` covering all 109 ops. Enables third-party codegen
-    (Prisma, Kiota, openapi-typescript-codegen).
-11. **Language-agnostic skill bundle.** Publish an MCP-compatible server so
-    non-Node agents can call `list`/`describe`/`validate` over stdio.
-12. **SiteLock integration** (scope change). Would require onboarding the
+9. **Language-agnostic skill bundle.** Publish an MCP-compatible server
+   so non-Node agents can call `list` / `describe` / `validate` over
+   stdio. The JSON output mode (item 7) is a prerequisite.
+10. **Cross-field invariants in schemas.** Encode DNSSEC `keyData` XOR
+    `dsData`, the billable-acknowledgment re-submit shape, and the other
+    `gotchas` as JSON-Schema `oneOf` / `dependentRequired` so validation
+    catches them instead of leaving them as prose.
+11. **SiteLock integration** (scope change). Would require onboarding the
     separate SiteLock API contract; currently out of scope, tracked as a
     standing non-goal.
 
 ### Known gaps / tech debt
 
-- `src/lib/schema.ts` does not yet model cross-field invariants (e.g.
-  DNSSEC `keyData` XOR `dsData`). These live in `gotchas` strings and are
-  not enforced programmatically.
-- `rtr describe` prints a human-shaped view; there is no JSON output mode
-  for tooling consumption.
-- `rtr doctor` is sequential; parallelising with a small worker pool would
-  cut wall time from ~20 s to ~3 s but risks upstream rate-limiting.
-- `scripts/extract-fields.mjs` expects cached HTML; it has no caching
-  layer of its own. A `--cache-dir` flag is a low-effort improvement.
+- `src/lib/schema.ts` does not yet model cross-field invariants (see item
+  10 above). They live in `gotchas` strings and are not enforced
+  programmatically.
+- `rtr describe` prints a human-shaped view only (see item 7).
+- `rtr doctor` is sequential (see item 8).
+- `scripts/extract-fields.mjs` expects cached HTML; no caching layer of
+  its own. A `--cache-dir` flag is a low-effort improvement.
+- The `release.yml` workflow references `environment: npm-publish` was
+  removed in favour of a secret-presence guard. If you prefer an
+  environment gate (for required reviewers on publishes), add it back in
+  and create the environment in repo settings.
 
 ---
 
@@ -534,45 +636,68 @@ pick up, in roughly descending priority.
 | ---------------- | -------------------------------------------------------- |
 | Repo             | <https://github.com/makafeli/realtime-register>          |
 | Default branch   | `main`                                                   |
-| Current HEAD     | see `git log -1 --oneline` (v0.2.2 savepoint)            |
+| Current HEAD     | `4033c38` · tag `v0.2.2` (use `git log -1 --oneline`)    |
 | Licence          | MIT                                                      |
 | Package name     | `@cave-man/realtime-register-skills`                     |
-| Package version  | `0.2.2` (published to npm; 0.2.0/0.2.1 also on registry) |
+| Package version  | `0.2.2` (published to npm; 0.2.0 / 0.2.1 also on registry) |
+| Bins on registry | `rtr`, `skills`, `realtime-register-skills`              |
 | Runtime          | Node.js 20.11+                                           |
 | Author           | Yasin Boelhouwer <yasin@enginebit.com>                   |
 | Upstream docs    | <https://dm.realtimeregister.com/docs/api>               |
 | API base URL     | `https://api.yoursrs.com`                                |
+| npm page         | <https://www.npmjs.com/package/@cave-man/realtime-register-skills> |
 
 ## Appendix B — where to look next
 
-| If you need to …                                  | Read                                          |
-| -------------------------------------------------- | --------------------------------------------- |
-| Activate the skill in an agent                     | `SKILL.md`                                    |
-| Understand the CLI surface                         | `docs/cli.md`                                 |
-| Edit a spec entry                                  | `docs/spec-format.md`                         |
-| Understand the `docs`/`sdk` markers and drift policy | `docs/fidelity.md`                          |
-| Integrate from agent code                          | `docs/agent-integration.md`                   |
-| Land a PR                                          | `CONTRIBUTING.md`                             |
-| See what changed between versions                  | `CHANGELOG.md`                                |
-| Browse operations by category                      | `references/<category>.md`                    |
-| Extend the CLI                                     | `src/cli/commands/<command>.ts`               |
-| Change schema derivation                           | `src/lib/schema.ts`                           |
+| If you need to …                                     | Read                                          |
+| ---------------------------------------------------- | --------------------------------------------- |
+| Activate the skill in an agent                       | `SKILL.md`                                    |
+| Understand the CLI surface                           | `docs/cli.md`                                 |
+| Edit a spec entry                                    | `docs/spec-format.md`                         |
+| Understand the `docs`/`sdk` markers and drift policy | `docs/fidelity.md`                            |
+| Integrate from agent code                            | `docs/agent-integration.md`                   |
+| Land a PR                                            | `CONTRIBUTING.md`                             |
+| See what changed between versions                    | `CHANGELOG.md`                                |
+| Browse operations by category                        | `references/<category>.md`                    |
+| Extend the CLI                                       | `src/cli/commands/<command>.ts`               |
+| Change schema derivation                             | `src/lib/schema.ts`                           |
+| Add / update a test                                  | `tests/<feature>.test.ts` (see §5.5)          |
+| Change a CI / release / drift workflow               | `.github/workflows/*.yml` (see §5.6)          |
+| Investigate a `fidelity-drift` issue                 | `scripts/diff-live.mjs` (see §5.4)            |
+| Bump `rtr` / `skills` version output                 | `package.json` only (via `src/lib/package-version.ts`) |
 
 ## Appendix C — "it's broken" flowchart
 
 1. **`npm install` fails** → check Node version (`node -v` must be ≥ 20.11).
 2. **`npm run build` fails** → run `npm run lint` to isolate type errors;
    look at the most recent edits under `src/`.
-3. **`rtr doctor` reports non-200** → upstream slug changed. Find the op
+3. **`npm test` fails** → read the failing file name first; `spec.test.ts`
+   means a spec/loader regression, `skill-paths.test.ts` means the
+   installer's target detection drifted, `install.test.ts` means the
+   end-to-end bin flow broke. None of them require the network.
+4. **`rtr doctor` reports non-200** → upstream slug changed. Find the op
    in the live nav, update `docUrl` in the YAML, commit, re-run.
-4. **`audit-refs.mjs` reports `problems: N`** → output names the problem.
+5. **`audit-refs.mjs` reports `problems: N`** → output names the problem.
    Common causes: duplicate `operationId`, unresolved `ref:`, mismatched
    category count.
-5. **`rtr validate` fails unexpectedly** → the schema is derived from YAML;
+6. **`rtr validate` fails unexpectedly** → the schema is derived from YAML;
    confirm the field actually exists on the op with `rtr describe`, and
    verify `required:` flags in the YAML match reality.
-6. **Nothing makes sense** → `git log --oneline` is small; start from
-   `d23771d` and read forward.
+7. **`npx @cave-man/realtime-register-skills …` prints _"could not
+   determine executable to run"_** → registry has a cached older version
+   without the `realtime-register-skills` bin. Verify with
+   `npm view @cave-man/realtime-register-skills bin` — it should list
+   `rtr`, `skills`, and `realtime-register-skills`. If not, republish.
+8. **`release.yml` skipped the npm publish step** → `NPM_TOKEN` secret is
+   missing (intentional guard). Add it at repo settings → secrets →
+   actions, re-run the workflow from the Actions UI, or cut a new tag.
+9. **`drift.yml` opened a `fidelity-drift` issue** → reproduce locally
+   with `node scripts/diff-live.mjs` (requires `npm run build` first).
+   The report lists operations by `kind` (`method` / `path` /
+   `required-count` / `fetch`). Fix the YAML, regenerate references,
+   commit, and close the issue.
+10. **Nothing makes sense** → `git log --oneline` is small; start from
+    `d23771d` and read forward.
 
 ---
 
