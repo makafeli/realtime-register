@@ -178,6 +178,7 @@ workflow, drift policy, and enforcement tooling are documented in
 | [`docs/spec-format.md`](docs/spec-format.md)                  | Contributors| YAML schema for every field in `assets/spec/`         |
 | [`docs/fidelity.md`](docs/fidelity.md)                        | Maintainers | Reconciliation policy and drift detection             |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md)                          | Contributors| How to land a PR                                      |
+| [`HANDOVER.md`](HANDOVER.md)                                  | Maintainers | End-to-end project memory and onboarding guide        |
 | [`CHANGELOG.md`](CHANGELOG.md)                                | Everyone    | Release history                                       |
 
 ---
