@@ -26,7 +26,7 @@ async function runInstaller(): Promise<void> {
   program
     .name("skills")
     .description("Installer for the @cave-man/realtime-register-skills agent skill.")
-    .version("0.2.0");
+    .version("0.2.1");
 
   program
     .command("install")

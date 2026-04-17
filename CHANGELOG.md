@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-04-17
+
+### Changed
+
+- **Scope migration.** Published as `@cave-man/realtime-register-skills` on
+  the npm registry (the v0.2.0 tarball was the first under this scope; the
+  0.2.1 bump aligns the git tag with the scoped-commit savepoint so
+  `git show v0.2.1` matches what's on npm byte-for-byte).
+- No API or behavioural changes since 0.2.0.
+
 ## [0.2.0] — 2026-04-17
 
 ### Changed
@@ -93,6 +103,7 @@ First public release.
 | `providers`     | 7   | Providers + gateway-only registry accounts          |
 | `misc`          | 5   | IsProxy + 4 ADAC WebSocket actions                  |
 
-[Unreleased]: https://github.com/makafeli/realtime-register/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/makafeli/realtime-register/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/makafeli/realtime-register/releases/tag/v0.2.1
 [0.2.0]: https://github.com/makafeli/realtime-register/releases/tag/v0.2.0
 [0.1.0]: https://github.com/makafeli/realtime-register/releases/tag/v0.1.0
