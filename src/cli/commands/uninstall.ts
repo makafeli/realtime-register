@@ -1,4 +1,4 @@
-// Uninstall / where helpers for @makafeli/realtime-register-skills.
+// Uninstall / where helpers for @cave-man/realtime-register-skills.
 
 import { existsSync, rmSync } from "node:fs";
 import {
@@ -49,7 +49,7 @@ export async function whereCommand(): Promise<void> {
   if (!anyInstalled) {
     console.log("");
     console.log(`No ${SKILL_NAME} installation detected. Run:`);
-    console.log("  npx @makafeli/realtime-register-skills install");
+    console.log("  npx @cave-man/realtime-register-skills install");
   }
 }
 

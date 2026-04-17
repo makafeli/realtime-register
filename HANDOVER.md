@@ -444,7 +444,7 @@ pick up, in roughly descending priority.
 
 ### Completed since the initial handover
 
-- ✅ **Package renamed** to `@makafeli/realtime-register-skills` (scoped,
+- ✅ **Package renamed** to `@cave-man/realtime-register-skills` (scoped,
   publishable). Version bumped to `0.2.0`.
 - ✅ **Installer implemented** (`skills` bin, `install` / `uninstall` /
   `where` / `doctor` / `rtr` pass-through). Autodetects Claude Desktop
@@ -535,7 +535,7 @@ pick up, in roughly descending priority.
 | Default branch   | `main`                                                   |
 | Current HEAD     | see `git log -1 --oneline` (v0.2.0 savepoint)            |
 | Licence          | MIT                                                      |
-| Package name     | `@makafeli/realtime-register-skills`                     |
+| Package name     | `@cave-man/realtime-register-skills`                     |
 | Package version  | `0.2.0` (unpublished to npm as of handover)              |
 | Runtime          | Node.js 20.11+                                           |
 | Author           | Yasin Boelhouwer <yasin@enginebit.com>                   |

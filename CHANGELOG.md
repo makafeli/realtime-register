@@ -10,7 +10,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- **Renamed package to `@makafeli/realtime-register-skills`.** The previous
+- **Renamed package to `@cave-man/realtime-register-skills`.** The previous
   unscoped `realtime-register` name is retired before any npm publish. The
   scoped name avoids trademark confusion with Realtime Register B.V. and
   enables the agent-skill installer UX.
@@ -19,7 +19,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - **`skills` bin** — new installer entry point invokable via
-  `npx @makafeli/realtime-register-skills <subcommand>` without a prior
+  `npx @cave-man/realtime-register-skills <subcommand>` without a prior
   install. Subcommands: `install`, `uninstall`, `where`, `doctor`, and a
   pass-through `rtr` forwarder.
 - **Autodetecting installer** covering Claude Desktop (macOS/Windows/Linux),
@@ -27,7 +27,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   local-project fallback (`./skills/`). Overridable with `--target <dir>`
   or `$REALTIME_REGISTER_SKILL_DIR`.
 - **`--global` flag** on `install` that additionally runs
-  `npm install -g @makafeli/realtime-register-skills` to put the `rtr`
+  `npm install -g @cave-man/realtime-register-skills` to put the `rtr`
   binary on PATH.
 - **`--dry-run`, `--force`, `--yes` flags** on `install`; `--target`, `--all`,
   `--dry-run` on `uninstall`.

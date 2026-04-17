@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Entry point for the `skills` bin. Handles install / uninstall / where /
 // doctor, and forwards any `rtr …` subcommand to the main CLI so a user can
-// run `npx @makafeli/realtime-register-skills rtr describe registerDomain`
+// run `npx @cave-man/realtime-register-skills rtr describe registerDomain`
 // without having to install the package globally first.
 
 import { Command } from "commander";
@@ -12,7 +12,7 @@ import { doctorCommand } from "./commands/doctor.js";
 // Pass-through: `skills rtr <anything>` delegates to the main rtr CLI without
 // involving commander at this layer (commander's subcommand handling is not
 // forgiving enough for arbitrary argv). This lets users run, for example,
-// `npx @makafeli/realtime-register-skills rtr describe registerDomain`.
+// `npx @cave-man/realtime-register-skills rtr describe registerDomain`.
 if (process.argv[2] === "rtr") {
   process.argv = [process.argv[0]!, process.argv[1]!, ...process.argv.slice(3)];
   await import("./index.js");
@@ -25,7 +25,7 @@ async function runInstaller(): Promise<void> {
 
   program
     .name("skills")
-    .description("Installer for the @makafeli/realtime-register-skills agent skill.")
+    .description("Installer for the @cave-man/realtime-register-skills agent skill.")
     .version("0.2.0");
 
   program

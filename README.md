@@ -1,6 +1,6 @@
-# @makafeli/realtime-register-skills
+# @cave-man/realtime-register-skills
 
-[![npm](https://img.shields.io/badge/npm-%40makafeli%2Frealtime--register--skills-cb3837?logo=npm)](https://www.npmjs.com/package/@makafeli/realtime-register-skills)
+[![npm](https://img.shields.io/badge/npm-%40cave--man%2Frealtime--register--skills-cb3837?logo=npm)](https://www.npmjs.com/package/@cave-man/realtime-register-skills)
 [![licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A520.11-44883e?logo=node.js&logoColor=white)](https://nodejs.org)
 [![operations](https://img.shields.io/badge/operations-109%2F109%20verified-2ea44f)](docs/fidelity.md)
@@ -46,7 +46,7 @@ Drop the skill (`SKILL.md` + `references/` + `assets/spec/`) into your agent
 client's skills directory — one command, no prior install:
 
 ```bash
-npx @makafeli/realtime-register-skills install
+npx @cave-man/realtime-register-skills install
 ```
 
 The installer auto-detects these targets (first match wins, non-interactive):
@@ -64,21 +64,21 @@ Override with `--target <dir>` or the `REALTIME_REGISTER_SKILL_DIR` env var.
 Installer subcommands:
 
 ```bash
-npx @makafeli/realtime-register-skills install --dry-run           # preview
-npx @makafeli/realtime-register-skills install --target ./skills   # explicit dir
-npx @makafeli/realtime-register-skills install --global            # + npm i -g (rtr on PATH)
-npx @makafeli/realtime-register-skills where                       # list detected targets
-npx @makafeli/realtime-register-skills uninstall                   # remove the skill
+npx @cave-man/realtime-register-skills install --dry-run           # preview
+npx @cave-man/realtime-register-skills install --target ./skills   # explicit dir
+npx @cave-man/realtime-register-skills install --global            # + npm i -g (rtr on PATH)
+npx @cave-man/realtime-register-skills where                       # list detected targets
+npx @cave-man/realtime-register-skills uninstall                   # remove the skill
 ```
 
 ### Install the `rtr` CLI
 
 ```bash
 # one-off (recommended)
-npx @makafeli/realtime-register-skills rtr --help
+npx @cave-man/realtime-register-skills rtr --help
 
 # or globally
-npm install -g @makafeli/realtime-register-skills
+npm install -g @cave-man/realtime-register-skills
 rtr --help
 ```
 
@@ -119,7 +119,7 @@ rtr doctor
 
 Two binaries ship in this package:
 
-**`skills`** — the installer entry point (`npx @makafeli/realtime-register-skills …`).
+**`skills`** — the installer entry point (`npx @cave-man/realtime-register-skills …`).
 
 | Command                                      | Purpose                                                                         |
 | -------------------------------------------- | ------------------------------------------------------------------------------- |

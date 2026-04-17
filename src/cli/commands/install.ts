@@ -1,4 +1,4 @@
-// Installer for @makafeli/realtime-register-skills.
+// Installer for @cave-man/realtime-register-skills.
 // Copies SKILL.md, references/, and assets/spec/ into a detected (or user-
 // specified) skills directory. Optionally performs a global npm install to
 // put the `rtr` CLI on PATH.
@@ -24,7 +24,7 @@ export interface InstallOptions {
   yes?: boolean;
 }
 
-const PACKAGE_NAME = "@makafeli/realtime-register-skills";
+const PACKAGE_NAME = "@cave-man/realtime-register-skills";
 
 export async function installCommand(opts: InstallOptions): Promise<void> {
   const target = resolveTarget(opts);
@@ -128,7 +128,7 @@ function countFiles(dir: string): number {
   return n;
 }
 
-/** Run `npm install -g @makafeli/realtime-register-skills`. */
+/** Run `npm install -g @cave-man/realtime-register-skills`. */
 function installGlobalCli(): void {
   console.log("");
   console.log(`Installing CLI globally: npm install -g ${PACKAGE_NAME}`);
