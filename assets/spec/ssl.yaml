@@ -1,0 +1,320 @@
+# SSL category. Full certificate lifecycle on the standard (non-ACME) flow.
+# All operations are synchronous unless marked otherwise; issuance completion
+# is signalled through notifications.
+
+category: ssl
+label: SSL
+description: |
+  Order, validate, reissue, renew, and revoke SSL certificates. DCV
+  (Domain Control Validation) is the critical hand-off; see the DcvType enum
+  in _shared.yaml for accepted methods.
+
+operations:
+
+  - operationId: getCertificate
+    verified: docs
+    method: GET
+    path: /v2/ssl/certificates/{id}
+    docUrl: /ssl/get
+    async: false
+    authScope: customer
+    summary: Retrieve a certificate order and its current state.
+    pathParams:
+      - { name: id, type: string, required: true }
+    responses:
+      "200": { description: "Certificate object with `status`, `commonName`, `sans`, `dcv`, `validFrom`, `validUntil`." }
+    errors: [ObjectDoesNotExist, AuthorizationFailed]
+
+  - operationId: listCertificates
+    verified: docs
+    method: GET
+    path: /v2/ssl/certificates
+    docUrl: /ssl/list
+    async: false
+    authScope: customer
+    summary: List certificate orders.
+    queryParams:
+      - { name: fields, type: string }
+      - { name: q,      type: string }
+      - { name: limit,  type: integer, default: 100, maximum: 1000 }
+      - { name: offset, type: integer, default: 0 }
+      - { name: order,  type: string }
+    responses:
+      "200": { description: "Paginated envelope of Certificate objects." }
+    errors: [InvalidParameter]
+
+  - operationId: getProduct
+    verified: docs
+    method: GET
+    path: /v2/ssl/products/{id}
+    docUrl: /ssl/products/get
+    async: false
+    authScope: customer
+    summary: Retrieve SSL product metadata (validation type, SAN limits, warranty).
+    pathParams:
+      - { name: id, type: string, required: true }
+    responses:
+      "200": { description: "Product object with `brand`, `validationType`, `maxSans`, `periods`." }
+    errors: [ObjectDoesNotExist]
+
+  - operationId: listProducts
+    verified: docs
+    method: GET
+    path: /v2/ssl/products
+    docUrl: /ssl/products/list
+    async: false
+    authScope: customer
+    summary: List SSL products available to the authenticated customer.
+    queryParams:
+      - { name: fields, type: string }
+      - { name: q,      type: string, description: "Filter, e.g. validationType:EV." }
+      - { name: limit,  type: integer, default: 100, maximum: 1000 }
+      - { name: offset, type: integer, default: 0 }
+    responses:
+      "200": { description: "Paginated envelope of Product objects." }
+    errors: [InvalidParameter]
+
+  - operationId: requestCertificate
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates
+    docUrl: /ssl/request
+    async: true
+    authScope: customer
+    summary: Place a new certificate order.
+    queryParams:
+      - { name: quote, type: boolean }
+    requestBody:
+      contentType: application/json
+      fields:
+        product:        { type: string, required: true, description: "SSL product identifier." }
+        period:         { type: integer, required: true, description: "Validity period in MONTHS." }
+        csr:            { type: string, required: true, description: "PEM-encoded PKCS#10 CSR." }
+        sans:           { type: array, items: string, description: "Subject Alternative Names." }
+        dcv:            { type: array, itemsRef: Dcv, description: "DCV method per FQDN." }
+        approver:       { type: object, fieldsRef: Approver, description: "Organization contact for OV/EV issuance." }
+        organization:   { type: object, fieldsRef: SslOrganization }
+        language:       { type: string, default: "en", maxLength: 5 }
+        billables:      { type: array, itemsRef: Billable }
+        autoRenew:      { type: boolean, description: "Defaults to false." }
+    responses:
+      "201": { description: "Certificate order created; poll for issuance." }
+      "202": { description: "{ processId } \u2014 async issuance via SDK-level workflow." }
+    errors: [InvalidParameter, BillableAcknowledgmentNeededException]
+    gotchas:
+      - "`period` is MONTHS; industry-standard max is 13."
+      - "DV orders allow DCV via EMAIL/DNS/HTTP/HTTPS; OV/EV typically require EMAIL plus organization verification."
+      - "CSR `commonName` must match the first SAN."
+
+  - operationId: reissueCertificate
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates/{id}/reissue
+    docUrl: /ssl/reissue
+    async: true
+    authScope: customer
+    summary: Reissue a certificate with a new CSR or SAN set.
+    pathParams:
+      - { name: id, type: string, required: true }
+    requestBody:
+      contentType: application/json
+      fields:
+        csr:  { type: string, required: true }
+        sans: { type: array,  items: string }
+        dcv:  { type: array,  itemsRef: Dcv }
+    responses:
+      "202": { description: "{ processId }" }
+    errors: [InvalidParameter, ObjectDoesNotExist]
+
+  - operationId: renewCertificate
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates/{id}/renew
+    docUrl: /ssl/renew
+    async: true
+    authScope: customer
+    summary: Renew an existing certificate.
+    pathParams:
+      - { name: id, type: string, required: true }
+    requestBody:
+      contentType: application/json
+      fields:
+        period:    { type: integer, required: true, description: "Months." }
+        csr:       { type: string,  required: true }
+        dcv:       { type: array,   itemsRef: Dcv }
+        billables: { type: array,   itemsRef: Billable }
+    responses:
+      "202": { description: "{ processId }" }
+    errors: [InvalidParameter, BillableAcknowledgmentNeededException]
+
+  - operationId: revokeCertificate
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates/{id}/revoke
+    docUrl: /ssl/revoke
+    async: true
+    authScope: customer
+    summary: Revoke a certificate.
+    pathParams:
+      - { name: id, type: string, required: true }
+    requestBody:
+      contentType: application/json
+      fields:
+        reason: { type: string, enum: [UNSPECIFIED, KEY_COMPROMISE, AFFILIATION_CHANGED, SUPERSEDED, CESSATION_OF_OPERATION] }
+    responses:
+      "202": { description: "{ processId }" }
+    errors: [InvalidParameter, ObjectDoesNotExist]
+
+  - operationId: resendDcv
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates/{id}/resend-dcv
+    docUrl: /ssl/resenddcv
+    async: false
+    authScope: customer
+    summary: Re-send the DCV email or re-check a DNS/HTTP DCV token.
+    pathParams:
+      - { name: id, type: string, required: true }
+    requestBody:
+      contentType: application/json
+      fields:
+        fqdn:    { type: string, required: true }
+        dcvType: { type: string, enumRef: DcvType }
+    responses:
+      "200": { description: "DCV request re-queued." }
+    errors: [InvalidParameter, ObjectDoesNotExist]
+
+  - operationId: downloadCertificate
+    verified: docs
+    method: GET
+    path: /v2/ssl/certificates/{id}/download
+    docUrl: /ssl/download
+    async: false
+    authScope: customer
+    summary: Download the issued certificate in PEM or PKCS#7 format.
+    pathParams:
+      - { name: id, type: string, required: true }
+    queryParams:
+      - { name: format, type: string, enum: [PEM, P7B], default: PEM }
+    responses:
+      "200": { description: "Certificate chain." }
+    errors: [ObjectDoesNotExist, InvalidParameter]
+
+  - operationId: scheduleValidationCall
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates/{id}/schedule-validation-call
+    docUrl: /ssl/schedule-validation-call
+    async: false
+    authScope: customer
+    summary: Schedule an EV validation call with the CA.
+    pathParams:
+      - { name: id, type: string, required: true }
+    requestBody:
+      contentType: application/json
+      fields:
+        date:    { type: string, required: true, format: date-time }
+        voice:   { type: string, required: true, format: e164 }
+        contact: { type: string, required: true, description: "Name of the person to contact." }
+    responses:
+      "200": { description: "Validation call scheduled." }
+    errors: [InvalidParameter, ObjectDoesNotExist]
+
+  - operationId: getDcvEmails
+    verified: docs
+    method: GET
+    path: /v2/ssl/certificates/dcv-email-addresses
+    docUrl: /ssl/dcvemailaddresslist
+    async: false
+    authScope: customer
+    summary: List the approver email addresses accepted for EMAIL DCV on a given FQDN.
+    queryParams:
+      - { name: fqdn, type: string, required: true }
+    responses:
+      "200": { description: "Array of candidate email addresses (WHOIS + constructed)." }
+    errors: [InvalidParameter]
+
+  - operationId: sendSubscriberAgreement
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates/{id}/send-subscriber-agreement
+    docUrl: /ssl/send-subscriber-agreement
+    async: false
+    authScope: customer
+    summary: Send (or re-send) the CA Subscriber Agreement email to the approver for certificates that require explicit acceptance.
+    pathParams:
+      - { name: id, type: string, required: true }
+    responses:
+      "200": { description: "Subscriber-agreement email dispatched." }
+    errors: [InvalidParameter, ObjectDoesNotExist]
+    gotchas:
+      - "Required for some OV/EV products on first issuance; a no-op once accepted."
+
+  - operationId: addNoteDeprecated
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates/{id}/add-note
+    docUrl: /ssl/add-note
+    async: false
+    authScope: customer
+    summary: Attach a free-form note to a certificate order. DEPRECATED; use a ticketing system instead.
+    pathParams:
+      - { name: id, type: string, required: true }
+    requestBody:
+      contentType: application/json
+      fields:
+        note: { type: string, required: true, maxLength: 2000 }
+    responses:
+      "200": { description: "Note stored." }
+    errors: [InvalidParameter, ObjectDoesNotExist]
+    gotchas:
+      - "Marked Deprecated in the live documentation; new integrations should avoid this endpoint."
+
+  - operationId: importCertificate
+    verified: docs
+    method: POST
+    path: /v2/ssl/certificates/import
+    docUrl: /ssl/import
+    async: false
+    authScope: customer
+    summary: Import an externally issued certificate so it can be tracked and renewed through the platform.
+    requestBody:
+      contentType: application/json
+      fields:
+        certificate: { type: string, required: true, description: "PEM-encoded certificate (leaf)." }
+        caBundle:    { type: string, description: "PEM-encoded intermediate chain." }
+        csr:         { type: string, description: "Original PEM-encoded CSR (if available)." }
+        coverage:    { type: string, description: "Product identifier that the imported cert most closely matches." }
+    responses:
+      "201": { description: "Certificate imported; `id` returned for subsequent renew/revoke operations." }
+    errors: [InvalidParameter]
+
+  - operationId: decodeCsr
+    verified: docs
+    method: POST
+    path: /v2/ssl/decode-csr
+    docUrl: /ssl/decocdecsr
+    async: false
+    authScope: customer
+    summary: Decode a PEM-encoded CSR and return its parsed fields (commonName, SANs, organization, keyBits, signatureAlgorithm).
+    requestBody:
+      contentType: application/json
+      fields:
+        csr: { type: string, required: true, description: "PEM-encoded PKCS#10 CSR." }
+    responses:
+      "200": { description: "Decoded CSR object." }
+    errors: [InvalidParameter]
+    gotchas:
+      - "The live-docs slug is `decocdecsr` (sic); preserved for fidelity with the navigation menu."
+
+  - operationId: generateAuthKey
+    verified: docs
+    method: POST
+    path: /v2/ssl/generate-authkey
+    docUrl: /ssl/generate-authkey
+    async: false
+    authScope: customer
+    summary: Generate a new authKey used for ACME external-account-binding (EAB) or programmatic re-key operations.
+    responses:
+      "200": { description: "`{ authKey }` \u2014 store securely; re-generating invalidates prior keys." }
+    errors: []

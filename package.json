@@ -1,0 +1,65 @@
+{
+  "name": "realtime-register",
+  "version": "0.1.0",
+  "description": "Realtime Register REST API skill and CLI. Machine-readable spec, schema-validated payloads, and scraped documentation for every non-SiteLock endpoint.",
+  "type": "module",
+  "bin": {
+    "rtr": "./bin/rtr.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "assets/spec",
+    "references",
+    "docs",
+    "SKILL.md",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "audit": "node scripts/audit-refs.mjs",
+    "doctor": "node bin/rtr.js doctor",
+    "generate": "node bin/rtr.js generate",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "keywords": [
+    "realtime-register",
+    "domain-registrar",
+    "rest-api",
+    "cli",
+    "agent-skill",
+    "dns",
+    "ssl",
+    "epp",
+    "registrar"
+  ],
+  "author": "Yasin Boelhouwer <yasin@enginebit.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/makafeli/realtime-register#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makafeli/realtime-register.git"
+  },
+  "bugs": {
+    "url": "https://github.com/makafeli/realtime-register/issues"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "cheerio": "^1.0.0",
+    "commander": "^12.1.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
