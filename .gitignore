@@ -8,3 +8,7 @@ dist/
 coverage/
 .cache/
 tmp/
+# Local release helpers (must never be committed or published).
+.commit-msg-*.txt
+.release-*.sh
+.release-notes-*.md
